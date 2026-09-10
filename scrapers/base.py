@@ -1,7 +1,7 @@
 """
 Session HTTP condivisa con retry automatici e backoff.
 Tutti gli scraper la usano invece di chiamare requests.get() direttamente,
-così i tentativi falliti (timeout, 429, 5xx) vengono ritentati in modo
+così i tentativi falliti (timeout, 429, 5xx, 403) vengono ritentati in modo
 uniforme senza duplicare la logica in ogni file.
 """
 
@@ -21,12 +21,14 @@ def build_session() -> requests.Session:
     session = requests.Session()
     session.headers.update(config.DEFAULT_HEADERS)
 
+    # Retry anche sui 403 (ESPN a volte blocca i runner di GitHub Actions)
     retry = Retry(
         total=config.REQUEST_RETRIES,
         backoff_factor=config.REQUEST_BACKOFF_SECONDS,
-        status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=("GET",),
+        status_forcelist=(403, 429, 500, 502, 503, 504),
+        allowed_methods=("GET", "HEAD"),
         raise_on_status=False,
+        respect_retry_after_header=True,
     )
     adapter = HTTPAdapter(max_retries=retry)
     session.mount("https://", adapter)
