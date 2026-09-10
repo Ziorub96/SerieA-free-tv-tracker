@@ -1,67 +1,84 @@
-"""
-Recupera il calendario completo della Serie A da football-data.org (API ufficiale e stabile).
-"""
+import os
+import requests
+from datetime import datetime, timedelta
 
-import logging
-from datetime import datetime
+FOOTBALL_DATA_TOKEN = os.environ.get("FOOTBALL_DATA_TOKEN", "")
 
-from scrapers.base import SESSION
-import config
-
-logger = logging.getLogger("seriea_tracker")
-
-
-def get_matches() -> list[dict]:
+def get_matches(days_ahead=10):
     """
-    Restituisce una lista di dict: home, away, date, time, datetime_iso, event_id.
+    Recupera il calendario della Serie A da football-data.org.
+    Filtra solo le partite nei prossimi `days_ahead` giorni.
     """
-    if not config.FOOTBALL_DATA_TOKEN:
-        logger.error("FOOTBALL_DATA_TOKEN non impostato! Aggiungi il secret su GitHub Actions.")
-        return []
+    if not FOOTBALL_DATA_TOKEN:
+        print("[WARNING] FOOTBALL_DATA_TOKEN non impostato. Uso ESPN come fallback.")
+        return get_matches_espn(days_ahead)
 
-    url = f"{config.FOOTBALL_DATA_BASE}/competitions/{config.FOOTBALL_DATA_COMPETITION}/matches"
-    headers = {
-        "X-Auth-Token": config.FOOTBALL_DATA_TOKEN,
-        "User-Agent": config.DEFAULT_USER_AGENT,
-    }
-
-    params = {
-        "status": "SCHEDULED,TIMED,IN_PLAY,PAUSED,FINISHED",  # prendiamo tutto e filtriamo dopo
-        "dateFrom": config.SEASON_START,
-        "dateTo": config.SEASON_END,
-    }
-
-    matches_by_id = {}
+    url = "https://api.football-data.org/v4/competitions/SA/matches"
+    headers = {"X-Auth-Token": FOOTBALL_DATA_TOKEN}
 
     try:
-        resp = SESSION.get(url, headers=headers, params=params, timeout=config.REQUEST_TIMEOUT)
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as exc:
-        logger.error("Errore chiamata football-data.org: %s", exc)
-        return []
+        r = requests.get(url, headers=headers, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        print(f"[ERROR] football-data.org: {e}")
+        return get_matches_espn(days_ahead)
 
-    for match in data.get("matches", []):
-        try:
-            event_id = str(match["id"])
-            home = match["homeTeam"]["name"]
-            away = match["awayTeam"]["name"]
-            date_str = match["utcDate"]  # es. "2026-09-11T18:45:00Z"
+    matches = []
+    oggi = datetime.now()
+    limite = oggi + timedelta(days=days_ahead)
 
-            dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    for m in data.get("matches", []):
+        date_str = m["utcDate"]
+        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        dt_naive = dt.replace(tzinfo=None)
 
-            matches_by_id[event_id] = {
-                "event_id": event_id,
-                "home": home,
-                "away": away,
-                "date": dt.strftime("%Y-%m-%d"),
-                "time": dt.strftime("%H:%M"),
-                "datetime_iso": date_str,
-            }
-        except (KeyError, ValueError) as exc:
-            logger.debug("Partita scartata: %s", exc)
+        if not (oggi <= dt_naive <= limite):
             continue
 
-    matches = sorted(matches_by_id.values(), key=lambda m: m["datetime_iso"])
-    logger.info("Calendario Serie A (football-data.org): %d partite recuperate.", len(matches))
+        matches.append({
+            "home": m["homeTeam"]["name"],
+            "away": m["awayTeam"]["name"],
+            "date": dt.strftime("%Y-%m-%d"),
+            "time": dt.strftime("%H:%M"),
+            "datetime_iso": date_str
+        })
+
+    return matches
+
+
+def get_matches_espn(days_ahead=10):
+    """Fallback: API ESPN."""
+    url = "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard"
+    r = requests.get(url, timeout=20)
+    data = r.json()
+
+    matches = []
+    oggi = datetime.now()
+    limite = oggi + timedelta(days=days_ahead)
+
+    for event in data.get("events", []):
+        comp = event["competitions"][0]
+        home = away = None
+        for t in comp["competitors"]:
+            if t["homeAway"] == "home":
+                home = t["team"]["displayName"]
+            elif t["homeAway"] == "away":
+                away = t["team"]["displayName"]
+
+        date_str = event["date"]
+        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        dt_naive = dt.replace(tzinfo=None)
+
+        if not (oggi <= dt_naive <= limite):
+            continue
+
+        matches.append({
+            "home": home,
+            "away": away,
+            "date": dt.strftime("%Y-%m-%d"),
+            "time": dt.strftime("%H:%M"),
+            "datetime_iso": date_str
+        })
+
     return matches
