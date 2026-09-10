@@ -5,9 +5,7 @@
 ## Venezia FC - ACF Fiorentina
 **Data:** 2026-09-11 ore 18:45
 
-
-### ⚠️ Da verificare manualmente:
-- Telemundo
+- nessuna emittente trovata
 
 ---
 
@@ -21,9 +19,7 @@
 ## SS Lazio - AC Milan
 **Data:** 2026-09-12 ore 16:00
 
-
-### ⚠️ Da verificare manualmente:
-- Telemundo
+- nessuna emittente trovata
 
 ---
 
@@ -37,9 +33,7 @@
 ## US Lecce - AC Monza
 **Data:** 2026-09-13 ore 13:00
 
-
-### ⚠️ Da verificare manualmente:
-- Telemundo
+- nessuna emittente trovata
 
 ---
 
@@ -102,18 +96,14 @@
 ## AS Roma - FC Internazionale Milano
 **Data:** 2026-09-19 ore 16:00
 
-
-### ⚠️ Da verificare manualmente:
-- Telemundo
+- nessuna emittente trovata
 
 ---
 
 ## Venezia FC - SS Lazio
 **Data:** 2026-09-19 ore 18:45
 
-
-### ⚠️ Da verificare manualmente:
-- Telemundo
+- nessuna emittente trovata
 
 ---
 
@@ -133,6 +123,13 @@
 
 ## Parma Calcio 1913 - Genoa CFC
 **Data:** 2026-09-20 ore 13:00
+
+- nessuna emittente trovata
+
+---
+
+## Juventus FC - Atalanta BC
+**Data:** 2026-09-20 ore 16:00
 
 - nessuna emittente trovata
 
