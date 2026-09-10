@@ -2,8 +2,8 @@ name: Update Serie A Free TV
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
-  workflow_dispatch: {}
+    - cron: "0 */6 * * *"   # ogni 6 ore
+  workflow_dispatch: {}     # permette di lanciarlo manualmente
 
 permissions:
   contents: write
@@ -11,10 +11,13 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
@@ -23,6 +26,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Esegui il tracker
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
         run: python main.py
 
       - name: Commit dei report aggiornati
