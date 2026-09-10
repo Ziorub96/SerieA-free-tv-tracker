@@ -31,18 +31,31 @@ ONLY_UPCOMING_MATCHES = True
 # HTTP
 # ---------------------------------------------------------------------------
 
-REQUEST_TIMEOUT = 20  # secondi
-REQUEST_RETRIES = 3
-REQUEST_BACKOFF_SECONDS = 1.5
+REQUEST_TIMEOUT = 25  # secondi
+REQUEST_RETRIES = 4
+REQUEST_BACKOFF_SECONDS = 2.0
 
+# User-Agent aggiornato (Chrome 128 - settembre 2026)
 DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/128.0.0.0 Safari/537.36"
 )
 
 DEFAULT_HEADERS = {
     "User-Agent": DEFAULT_USER_AGENT,
-    "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9,it-IT;q=0.8,it;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Referer": "https://www.espn.com/",
+    "Origin": "https://www.espn.com",
+    "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-site",
+    "Sec-Ch-Ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
 }
 
 # ---------------------------------------------------------------------------
