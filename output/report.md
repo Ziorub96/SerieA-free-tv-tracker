@@ -135,3 +135,10 @@
 
 ---
 
+## AC Milan - US Lecce
+**Data:** 2026-09-20 ore 18:45
+
+- nessuna emittente trovata
+
+---
+
