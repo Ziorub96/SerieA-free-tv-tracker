@@ -1,5 +1,5 @@
+import re
 from rapidfuzz import fuzz
-from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 TEAM_TRANSLATIONS = {
@@ -32,6 +32,10 @@ TEAM_TRANSLATIONS = {
     }
 }
 
+# Soglia di distanza massima (in caratteri) tra i due team
+# per considerarli "nella stessa partita"
+MAX_DISTANCE = 200
+
 
 def translate_team(team_name, lang="it"):
     if lang == "it":
@@ -39,59 +43,53 @@ def translate_team(team_name, lang="it"):
     return TEAM_TRANSLATIONS.get(lang, {}).get(team_name, team_name)
 
 
-def extract_visible_text(html: str) -> str:
+def _word_boundary_find(text, word):
     """
-    Estrae SOLO il testo visibile da un HTML, rimuovendo script/style/tag.
-    Fondamentale: fare fuzzy matching sull'HTML grezzo produce falsi
-    positivi quasi garantiti su pagine grandi.
+    Cerca `word` nel testo rispettando i confini di parola.
+    Evita che 'inter' matchi 'international'.
     """
-    if not html:
-        return ""
-    soup = BeautifulSoup(html, "lxml")
-    for tag in soup(["script", "style", "noscript", "svg", "path"]):
-        tag.decompose()
-    return soup.get_text(" ", strip=True)
+    pattern = r'\b' + re.escape(word) + r'\b'
+    return [m.start() for m in re.finditer(pattern, text, re.IGNORECASE)]
 
 
-def match_game(text, home, away, lang="it", threshold=90, window=300):
+def match_game(text, home, away, lang="it", threshold=85):
     """
-    True solo se home e away compaiono entrambi, vicini tra loro
-    (entro `window` caratteri), nel testo VISIBILE della pagina.
-    Soglia alzata a 90 perché ora operiamo su testo pulito, non su HTML:
-    su testo pulito una soglia alta è finalmente significativa.
+    Matching rigoroso:
+    - Word boundary per evitare falsi positivi ('inter' != 'international')
+    - Richiede che i due team siano vicini (< 200 caratteri)
+    - Fuzzy come fallback con soglia alta (85)
     """
-    if not text or len(text) < 20:
+    if not text or len(text) < 30:
         return False
 
     text_lower = text.lower()
     home_t = translate_team(home, lang).lower()
     away_t = translate_team(away, lang).lower()
 
-    # Match diretto: entrambe le squadre nella stessa finestra di testo
-    idx_home = text_lower.find(home_t)
-    if idx_home == -1:
-        # fallback fuzzy solo per trovare la posizione approssimativa
+    # Trova tutte le posizioni dei due team
+    home_positions = _word_boundary_find(text, home_t)
+    away_positions = _word_boundary_find(text, away_t)
+
+    # Se entrambi presenti, verifica prossimità
+    if home_positions and away_positions:
+        for hp in home_positions:
+            for ap in away_positions:
+                if abs(hp - ap) <= MAX_DISTANCE:
+                    return True
+        # Presenti ma distanti: probabilmente non è la stessa partita
+        return False
+
+    # Fallback fuzzy solo se il testo è corto (titolo YouTube, riga tabella)
+    if len(text) < 500:
         home_score = fuzz.partial_ratio(home_t, text_lower)
-        if home_score < threshold:
-            return False
-        idx_home = 0  # non sappiamo dove, controlliamo tutto il testo
+        away_score = fuzz.partial_ratio(away_t, text_lower)
+        return home_score >= threshold and away_score >= threshold
 
-    start = max(0, idx_home - window)
-    end = idx_home + len(home_t) + window
-    local_text = text_lower[start:end]
-
-    if away_t in local_text:
-        return True
-
-    away_score = fuzz.partial_ratio(away_t, local_text)
-    return away_score >= threshold
+    return False
 
 
 def fetch_dynamic_html(urls, wait_ms=3000):
-    """
-    Scarica pagine SPA con Playwright e restituisce TESTO VISIBILE
-    (non HTML grezzo) di ognuna.
-    """
+    """Scarica HTML da siti SPA usando Playwright."""
     pages = []
     try:
         with sync_playwright() as p:
@@ -100,25 +98,16 @@ def fetch_dynamic_html(urls, wait_ms=3000):
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
             page = context.new_page()
-
             for url in urls:
                 try:
                     page.goto(url, timeout=30000, wait_until="domcontentloaded")
                     page.wait_for_timeout(wait_ms)
                     html = page.content()
-                    text = extract_visible_text(html)
-                    # Una pagina di blocco/errore geografico è quasi sempre
-                    # molto corta in testo visibile, anche se l'HTML "vuoto"
-                    # pesa migliaia di caratteri di markup.
-                    if len(text) > 200:
-                        pages.append(text)
-                    else:
-                        print(f"  [Playwright] {url}: pagina troppo corta ({len(text)} caratteri) — probabile blocco/geoblocking")
+                    if html and len(html) > 1000:
+                        pages.append(html)
                 except Exception as e:
                     print(f"  [Playwright] {url}: {e}")
-
             browser.close()
     except Exception as e:
         print(f"  [Playwright] errore generale: {e}")
-
     return pages
