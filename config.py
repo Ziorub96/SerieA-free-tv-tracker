@@ -8,34 +8,28 @@ scraper per un aggiornamento stagionale.
 import os
 
 # ---------------------------------------------------------------------------
-# Calendario / API partite
+# Calendario / API partite  (NUOVA FONTE: football-data.org)
 # ---------------------------------------------------------------------------
 
-ESPN_LEAGUE_SLUG = "ita.1"  # Serie A su ESPN
-ESPN_SCOREBOARD_URL = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{ESPN_LEAGUE_SLUG}/scoreboard"
+FOOTBALL_DATA_BASE = "https://api.football-data.org/v4"
+FOOTBALL_DATA_COMPETITION = "SA"  # Serie A
+FOOTBALL_DATA_TOKEN = os.getenv("FOOTBALL_DATA_TOKEN", "")  # letto dal secret di GitHub Actions
 
 # La Serie A 2026/27 si gioca indicativamente da fine agosto 2026 a fine maggio 2027.
-# Aggiorna queste due date a inizio stagione se cambia il calendario ufficiale.
 SEASON_START = "2026-08-22"
 SEASON_END = "2027-05-31"
 
-# Numero di giorni per ogni "finestra" richiesta all'API ESPN (l'endpoint scoreboard
-# non restituisce un intero campionato con una singola chiamata: va paginato per date).
-ESPN_WINDOW_DAYS = 15
-
-# Considera solo le partite da oggi in poi nel report finale (le passate non servono
-# a chi vuole sapere "dove la vedo").
+# Considera solo le partite da oggi in poi nel report finale
 ONLY_UPCOMING_MATCHES = True
 
 # ---------------------------------------------------------------------------
 # HTTP
 # ---------------------------------------------------------------------------
 
-REQUEST_TIMEOUT = 25  # secondi
+REQUEST_TIMEOUT = 25
 REQUEST_RETRIES = 4
 REQUEST_BACKOFF_SECONDS = 2.0
 
-# User-Agent aggiornato (Chrome 128 - settembre 2026)
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -44,41 +38,23 @@ DEFAULT_USER_AGENT = (
 
 DEFAULT_HEADERS = {
     "User-Agent": DEFAULT_USER_AGENT,
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-US,en;q=0.9,it-IT;q=0.8,it;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Referer": "https://www.espn.com/",
-    "Origin": "https://www.espn.com",
-    "Connection": "keep-alive",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "same-site",
-    "Sec-Ch-Ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Accept": "application/json",
+    "Accept-Language": "en-US,en;q=0.9,it;q=0.8",
 }
 
 # ---------------------------------------------------------------------------
-# Canali YouTube (broadcaster gratuiti via YouTube)
+# Canali YouTube
 # ---------------------------------------------------------------------------
-# Per ciascun canale puoi specificare l'handle (es. "@CazeTV") e/o l'ID canonico
-# (UC...). Se l'ID non è noto/verificato lascialo a None: lo scraper lo risolverà
-# automaticamente dall'handle alla prima esecuzione (più lento ma sempre corretto).
 
 YOUTUBE_CHANNELS = {
     "CazéTV": {
         "handle": "@CazeTV",
-        # Verificato via Wikidata (settembre 2026): non hardcodare mai un ID
-        # senza controllo, YouTube lo cambia raramente ma non è garantito.
         "channel_id": "UCZiYbVptd3PVPf4f6eR6UaQ",
         "lang": "pt",
         "affidabile": True,
     },
     "SportyNet": {
         "handle": "@SportyNetBrasil",
-        # ID NON verificato nella versione precedente del progetto: lo lasciamo
-        # vuoto così viene risolto automaticamente dall'handle invece di usare
-        # un ID potenzialmente sbagliato.
         "channel_id": None,
         "lang": "pt",
         "affidabile": True,
@@ -86,11 +62,8 @@ YOUTUBE_CHANNELS = {
 }
 
 # ---------------------------------------------------------------------------
-# Altri broadcaster gratuiti (siti web / palinsesti)
+# Altri broadcaster gratuiti
 # ---------------------------------------------------------------------------
-# "affidabile": False significa "includi nel report ma marca come da verificare
-# manualmente" — usato per broadcaster con geoblocking severo o modello
-# freemium poco chiaro.
 
 WEB_BROADCASTERS = {
     "XSports": {
@@ -99,14 +72,14 @@ WEB_BROADCASTERS = {
             "https://www.xsports.com.br/programacao",
         ],
         "lang": "pt",
-        "affidabile": False,  # geoblocking Brasile, palinsesto non sempre pubblicato online
+        "affidabile": False,
     },
     "SportyTV": {
         "urls": [
             "https://sporty.com/tv",
         ],
         "lang": "en",
-        "affidabile": False,  # nessun palinsesto pubblico strutturato confermato
+        "affidabile": False,
     },
     "CBS Sports Golazo": {
         "urls": [
@@ -120,35 +93,35 @@ WEB_BROADCASTERS = {
             "https://www.telemundo.com/deportes/futbol",
         ],
         "lang": "es",
-        "affidabile": False,  # gratuito solo via antenna OTA, palinsesto poco affidabile online
+        "affidabile": False,
     },
     "ANTV": {
         "urls": [
             "https://www.antvklik.com",
         ],
         "lang": "id",
-        "affidabile": False,  # palinsesto indonesiano non sempre indicizzabile
+        "affidabile": False,
     },
     "Match TV": {
         "urls": [
             "https://matchtv.ru/football",
         ],
         "lang": "ru",
-        "affidabile": False,  # geoblocking Russia + solo alcune partite top
+        "affidabile": False,
     },
     "New World TV": {
         "urls": [
             "https://www.newworldtv.com/sports",
         ],
         "lang": "fr",
-        "affidabile": False,  # prevalentemente pay, quota gratuita non documentata
+        "affidabile": False,
     },
     "ELTA": {
         "urls": [
             "https://eltaott.tv/sports",
         ],
         "lang": "zh",
-        "affidabile": False,  # servizio OTT freemium, quota gratuita non documentata
+        "affidabile": False,
     },
 }
 
