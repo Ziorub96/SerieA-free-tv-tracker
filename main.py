@@ -97,7 +97,14 @@ def write_markdown_report(report: list[dict]) -> None:
     ]
 
     if not report:
-        lines.append("Nessuna partita trovata nel periodo configurato.")
+        lines.append(
+            "**Nessuna partita trovata.**\n\n"
+            "Possibili cause:\n"
+            "- L'API ESPN ha restituito 403 (blocco dei runner di GitHub Actions)\n"
+            "- Nessuna partita futura nel periodo configurato\n"
+            "- Errore di rete temporaneo\n\n"
+            "Controlla i log di GitHub Actions per i dettagli."
+        )
     else:
         for row in report:
             lines.append(f"## {row['home']} - {row['away']}")
